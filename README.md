@@ -21,7 +21,7 @@ Steps to using
 The script will create files named things like `matches_0-1000000`, `matches_1000000-2000000`, etc. in the current directory.
 
 config.json
------------
+===========
 
 This file is both read and written by `dota_slurp.py` and used to maintain state per run. It's a json file with three values:
 
