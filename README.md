@@ -35,9 +35,11 @@ Hence the example `config.json`:
 
 will grab a block of matches from 0 to 1000000 (exclusive) then skip a block and begin grabbing a block of matches from 2000000 to 3000000, covering half the match history space.
 
-Known Issues
-============
+Known Issues and TODOs
+======================
 
 * More info while running would be nice. Currently only prints data every completed file and if those are set large, it could take a while.
 * Revisit config.json design.
 * Compression, compression, compression. I'm seeing a factor of savings of over 10x using bz2 and a little under 8x using gzip. Files are pretty large (about a gigabyte for a million matches), so this is probably a good idea.
+* It's unclear what to do to continue work later when we reach the end of match history. But this will probably need a different tool.
+* Obviously, and unfortunately, we don't have skill tags for the matches.
