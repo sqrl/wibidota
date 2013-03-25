@@ -10,6 +10,7 @@ except ImportError:
         import simplejson as json
     except ImportError:
         import json
+import gzip
 import logging
 import os
 import requests
@@ -27,9 +28,6 @@ NEXT_REQUEST_TIME = 0
 # The config file we use to store/restore our place between runs and the
 # globals for its settings.
 CONFIG_FILE = "config.json"
-NEXT_SEQ = 0
-BLOCK_SIZE = 1000000
-SKIP_BLOCKS = 1
 
 # These globals are for calculating aggregate performance numbers for the time
 # we spend waiting between requests.
@@ -44,26 +42,20 @@ def read_config():
     try:
         conf_file = open(CONFIG_FILE, 'r')
         conf = json.load(conf_file)
-        NEXT_SEQ = conf["start"]
-        BLOCK_SIZE = conf["block_size"]
-        SKIP_BLOCKS = conf["skip_blocks"]
         conf_file.close()
+        return conf["ranges"]
     except (IOError, ValueError):
         print("""Missing or corrupt %s file. Please use the format:\n"""
         """{\n"""
-        """    "start": <next seq id to retrieve>,\n"""
-        """    "block_size": <how big are blocks in terms of sequence numbers>,\n"""
-        """    "skip_blocks": <how many blocks to skip between ranges>\n"""
+        """    "ranges":<ranges to retrieve>\n"""
         """}""" % CONFIG_FILE)
         sys.exit(1)
 
-def write_config():
+def write_config(ranges):
     """
     Writes out a config file to save our place between runs.
     """
-    conf = {"start": NEXT_SEQ,
-            "block_size": BLOCK_SIZE,
-            "skip_blocks": SKIP_BLOCKS}
+    conf = {"ranges": ranges}
     conf_file = open(CONFIG_FILE, 'w')
     json.dump(conf, conf_file)
     conf_file.close()
@@ -82,6 +74,8 @@ def request_matches(start_id):
         TOTAL_WAIT_TIME += time_to_wait
     NEXT_REQUEST_TIME = time.time() + REQUEST_PERIOD
     resp = requests.get(BASE_URL, params=params)
+    if resp.status_code != requests.codes.ok:
+        print "Warning: Bad status code for request: %s" % resp.status_code
     TOTAL_CALLS += 1
     return json.loads(resp.content)
     
@@ -110,22 +104,28 @@ def slurp_block(start_seq_id, limit_seq_id, file):
 
 if __name__ == "__main__":
     # Read in a config file to remember our place, and begin recording.
-    read_config()
+    ranges = read_config()
     print "Retrieving Dota 2 match history...."
     while True:
-        f = open("matches_%d-%d" % (NEXT_SEQ, NEXT_SEQ + BLOCK_SIZE), 'w')
-        if not slurp_block(NEXT_SEQ, NEXT_SEQ + BLOCK_SIZE, f):
-            print "No matches found beyond seq %d" % NEXT_SEQ + BLOCK_SIZE
+        try:
+            range = ranges.pop(0)
+        except IndexError:
+            print "Finished with all ranges in config.json."
+            print "Exiting."
+            sys.exit(0)
+        print "Downloading range [%d,%d)." % (range[0], range[1])
+        f = gzip.open("matches_%d-%d.gz"
+                      % (range[0], range[1]), 'w')
+        if not slurp_block(range[0], range[1], f):
+            print "No matches found beyond seq %d" % range[1]
             print "Exiting."
             f.close()
             sys.exit(0)
         f.close()
-        # Save our progress.
-        NEXT_SEQ = NEXT_SEQ + (BLOCK_SIZE * (SKIP_BLOCKS + 1))
-        write_config()
+        write_config(ranges)
         # Report some stats.
         print("Total API requests: %s\n"
               "Total wait time: %s\n"
               "Average wait per request: %s"
               % (TOTAL_CALLS, TOTAL_WAIT_TIME, TOTAL_WAIT_TIME/TOTAL_CALLS))
-        
+
