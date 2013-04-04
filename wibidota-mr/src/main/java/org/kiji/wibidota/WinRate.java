@@ -94,7 +94,7 @@ public class WinRate extends Configured implements Tool {
         for (JsonElement playerElem : matchTree.get("players").getAsJsonArray()) {
           JsonObject player = playerElem.getAsJsonObject();
           // Check for abandoned and bot games.
-          if (player.get("leaver_status").isJsonNull()) {
+          if (!player.has("leaver_status")) {
             // Indicates a bot.
             context.getCounter(WinRateCounters.BOT_GAMES).increment(1);
           } else if (2 == player.get("leaver_status").getAsInt()) {
