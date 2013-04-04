@@ -1,5 +1,5 @@
 *.py[cod]
-
+.DS_Store
 # C extensions
 *.so
 
@@ -33,3 +33,23 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Build and run artifacts.
+target/
+build/
+logs/
+pids/
+
+# Project files from IDEs.
+.classpath
+.project
+.settings
+prj.el
+.jde/
+TAGS
+.taglist
+nb-configuration.xml
+nbactions.xml
+.ensime
+.idea/
+*.iml
