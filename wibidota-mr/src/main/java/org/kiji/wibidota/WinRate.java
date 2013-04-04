@@ -89,7 +89,7 @@ public class WinRate extends Configured implements Tool {
           // Keep track of tournament games
           context.getCounter(WinRateCounters.TOURNAMENT_GAMES).increment(1);
         }
-        boolean radiant_victory = matchTree.get("radiant_victory").getAsBoolean();
+        boolean radiant_win = matchTree.get("radiant_win").getAsBoolean();
         // Go through the player list and output the appropriate result information.
         for (JsonElement playerElem : matchTree.get("players").getAsJsonArray()) {
           JsonObject player = playerElem.getAsJsonObject();
@@ -107,10 +107,10 @@ public class WinRate extends Configured implements Tool {
           int player_slot = player.get("player_slot").getAsInt();
           if ((player_slot & DIRE_MASK) != DIRE_MASK) {
             // Radiant player.
-            context.write(hero_id, (radiant_victory ? WIN : LOSS));
+            context.write(hero_id, (radiant_win ? WIN : LOSS));
           } else {
             // Dire player
-            context.write(hero_id, (radiant_victory ? LOSS : WIN));
+            context.write(hero_id, (radiant_win ? LOSS : WIN));
           }
         }
       } catch (IllegalStateException e) {
