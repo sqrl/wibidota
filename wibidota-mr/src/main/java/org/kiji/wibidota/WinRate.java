@@ -21,6 +21,7 @@ package org.kiji.wibidota;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
@@ -33,6 +34,8 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +46,7 @@ import com.google.gson.JsonParser;
 /**
  * A simple class that represents a winrate job.
  */
-public class WinRate {
+public class WinRate extends Configured implements Tool {
   private static final Logger LOG = LoggerFactory.getLogger(WinRate.class);
 
   /** Flag on the player_slot field that indicates they were on the Dire team. */
@@ -137,8 +140,12 @@ public class WinRate {
 
   public static void main(String args[]) throws Exception {
     Configuration conf = new Configuration();
+    int res = ToolRunner.run(conf, new WinRate(), args);
+    System.exit(res);
+  }
 
-    Job job = new Job(conf, "winrate");
+  public final int run(final String[] args) throws Exception {
+    Job job = new Job(super.getConf(), "winrate");
     job.setOutputKeyClass(IntWritable.class);
     job.setOutputValueClass(IntWritable.class);
 
@@ -151,7 +158,11 @@ public class WinRate {
     FileInputFormat.addInputPath(job, new Path(args[0]));
     FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
-    job.waitForCompletion(true);
+    if (job.waitForCompletion(true)) {
+      return 0;
+    } else {
+      return -1;
+    }
   }
 }
 
