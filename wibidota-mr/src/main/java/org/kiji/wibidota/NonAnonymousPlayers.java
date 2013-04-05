@@ -104,8 +104,8 @@ public class NonAnonymousPlayers extends Configured implements Tool {
 
   public final int run(final String[] args) throws Exception {
     Job job = new Job(super.getConf(), "non-anonymous");
-    job.setOutputKeyClass(IntWritable.class);
-    job.setOutputValueClass(IntWritable.class);
+    job.setOutputKeyClass(LongWritable.class);
+    job.setOutputValueClass(NullWritable.class);
 
     job.setMapperClass(Map.class);
     job.setReducerClass(Reduce.class);
