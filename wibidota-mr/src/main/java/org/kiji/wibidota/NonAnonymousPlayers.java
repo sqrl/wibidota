@@ -54,14 +54,16 @@ public class NonAnonymousPlayers extends Configured implements Tool {
    */
   static enum NonAnonymousPlayersCounters {
     MALFORMED_MATCH_LINES,
-    NONANONYMOUS_TOTAL
+    NONANONYMOUS_PLAYER_TOTAL,
+    UNIQUE_NONANONYMOUS_MATCHES, // Number of anonymous matches played, not double counting for multiple players.
+    NONANONYMOUS_MATCHES // Number of nonanonymous matches played, counting each player individually.
   }
 
   /*
-   * A mapper that reads over matches from the input files and outputs <player_id, null>
+   * A mapper that reads over matches from the input files and outputs <player_id, match_id>
    * for every non-anonymous player in the match
    */
-  public static class Map extends Mapper<LongWritable, Text, LongWritable, NullWritable> {
+  public static class Map extends Mapper<LongWritable, Text, LongWritable, IntWritable> {
     // The constant Valve uses for anonymous players. Equal to -1 in signed 32 bits.
     private final static long ANONYMOUS_ID = 4294967295L;
 
@@ -69,13 +71,24 @@ public class NonAnonymousPlayers extends Configured implements Tool {
     public void map(LongWritable key, Text value, Context context)
         throws IOException, InterruptedException {
       try{
+        boolean nonAnonymousPlayerFound = false;
         JsonObject matchTree = PARSER.parse(value.toString()).getAsJsonObject();
+        IntWritable matchId = new IntWritable(matchTree.get("match_id").getAsInt());
         for (JsonElement playerElem : matchTree.get("players").getAsJsonArray()) {
           JsonObject player = playerElem.getAsJsonObject();
-          long player_id = player.get("account_id").getAsLong();
-          if (player_id != ANONYMOUS_ID) {
-            context.write(new LongWritable(player_id), NullWritable.get());
+          JsonElement account_id = player.get("account_id");
+          if (null == account_id) {
+            // Player is a bot.
+            return;
           }
+          long player_id = account_id.getAsLong();
+          if (player_id != ANONYMOUS_ID) {
+            nonAnonymousPlayerFound = true;
+            context.write(new LongWritable(player_id), matchId);
+          }
+        }
+        if (nonAnonymousPlayerFound) {
+          context.getCounter(NonAnonymousPlayersCounters.UNIQUE_NONANONYMOUS_MATCHES).increment(1);
         }
       } catch (IllegalStateException e) {
         // Indicates malformed JSON.
@@ -85,14 +98,19 @@ public class NonAnonymousPlayers extends Configured implements Tool {
   }
 
   /**
-   * A simple reducer that simply outputs the non-anonymous player accounts.
+   * A simple reducer that simply outputs the non-anonymous player accounts with their play count.
    */
   public static class Reduce
-      extends Reducer<LongWritable, NullWritable, LongWritable, NullWritable> {
-    public void reduce(LongWritable key, Iterable<NullWritable> values, Context context) 
+      extends Reducer<LongWritable, IntWritable, LongWritable, IntWritable> {
+    public void reduce(LongWritable key, Iterable<IntWritable> values, Context context) 
         throws IOException, InterruptedException {
-      context.getCounter(NonAnonymousPlayersCounters.NONANONYMOUS_TOTAL).increment(1);
-      context.write(key, NullWritable.get());
+      context.getCounter(NonAnonymousPlayersCounters.NONANONYMOUS_PLAYER_TOTAL).increment(1);
+      int total = 0;
+      for (IntWritable match : values) {
+        total++;
+      }
+      context.getCounter(NonAnonymousPlayersCounters.NONANONYMOUS_MATCHES).increment(total);
+      context.write(key, new IntWritable(total));
     }
   }
 
@@ -105,7 +123,7 @@ public class NonAnonymousPlayers extends Configured implements Tool {
   public final int run(final String[] args) throws Exception {
     Job job = new Job(super.getConf(), "non-anonymous");
     job.setOutputKeyClass(LongWritable.class);
-    job.setOutputValueClass(NullWritable.class);
+    job.setOutputValueClass(IntWritable.class);
 
     job.setMapperClass(Map.class);
     job.setReducerClass(Reduce.class);
