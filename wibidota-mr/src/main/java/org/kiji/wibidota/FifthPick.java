@@ -227,13 +227,14 @@ public class FifthPick extends Configured implements Tool {
   }
 
   public final int run(final String[] args) throws Exception {
-    Job job = new Job(super.getConf(), "non-anonymous");
+    Job job = new Job(super.getConf(), "fifth pick");
     job.setOutputKeyClass(Text.class);
     job.setOutputValueClass(Text.class);
-
+    
     job.setMapperClass(Map.class);
     job.setReducerClass(Reduce.class);
-
+i   job.setMapOutputKeyClass(Text.class);
+    job.setMapOutputValueClass(FifthResultWritable.class);
     job.setInputFormatClass(TextInputFormat.class);
     job.setOutputFormatClass(TextOutputFormat.class);
 
