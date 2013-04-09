@@ -18,8 +18,6 @@
 
 package org.kiji.wibidota;
 
-import static junit.framework.Assert.*;
-
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
