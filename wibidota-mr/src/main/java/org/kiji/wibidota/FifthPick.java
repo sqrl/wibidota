@@ -18,6 +18,8 @@
 
 package org.kiji.wibidota;
 
+import static junit.framework.Assert.*;
+
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
@@ -57,7 +59,6 @@ public class FifthPick extends Configured implements Tool {
 
   /** Flag on the player_slot field that indicates they were on the Dire team. */
   private static final int DIRE_MASK = 128;
-  private static final int SLOT_BITMASK = 7;
 
   /**
    * Some useful counters to keep track of while processing match history.
@@ -148,38 +149,37 @@ public class FifthPick extends Configured implements Tool {
           // This is where we actually write out victory or defeat.
           int hero_id = player.get("hero_id").getAsInt();
           int player_slot = player.get("player_slot").getAsInt();
-          if ((player_slot & DIRE_MASK) == 0) {
+          if (player_slot < DIRE_MASK) {
             // Radiant player.
             radiant_heroes[player_slot] = hero_id;
           } else {
             // Dire player
-            dire_heroes[player_slot & SLOT_BITMASK] = hero_id;
+            dire_heroes[player_slot - DIRE_MASK] = hero_id;
           }
-          // Sort the arrays.
-          Arrays.sort(radiant_heroes);
-          Arrays.sort(dire_heroes);
-
-          // Now go through the 5 slots and construct keys and outputs.
-          // For each 
-          for (int skip = 0; skip < 5; skip++) {
+        }
+        // Sort the arrays .
+        Arrays.sort(radiant_heroes);
+        Arrays.sort(dire_heroes);
+        
+        // Now go through the 5 slots and construct keys and outputs.
+        for (int skip = 0; skip < 5; skip++) {
             StringBuilder radiant_key_builder = new StringBuilder();
             StringBuilder dire_key_builder = new StringBuilder();
             for (int j = 0; j < 5; j++) {
-              if (j == skip) {
-                continue;
-              }
-              radiant_key_builder.append(radiant_heroes[j]);
-              dire_key_builder.append(dire_heroes[j]);
-              if ((j != 5) && !((j == 4) && (skip == 5))) {
-                radiant_key_builder.append('.');
-                dire_key_builder.append('.');
-              }
+                if (j == skip) {
+                    continue;
+                }
+                radiant_key_builder.append(Integer.toString(radiant_heroes[j]));
+                dire_key_builder.append(Integer.toString(dire_heroes[j]));
+                if (!((j == 5) || ((j == 4) && (skip == 5)))) {
+                    radiant_key_builder.append('.');
+                    dire_key_builder.append('.');
+                }
             }
             context.write(new Text(radiant_key_builder.toString()),
-                new FifthResultWritable(radiant_heroes[skip], radiantOutcome));
+                    new FifthResultWritable(radiant_heroes[skip], radiantOutcome));
             context.write(new Text(dire_key_builder.toString()),
-                new FifthResultWritable(dire_heroes[skip], direOutcome));
-          }
+                    new FifthResultWritable(dire_heroes[skip], direOutcome));
         }
       } catch (IllegalStateException e) {
         // Indicates malformed JSON.
@@ -233,7 +233,7 @@ public class FifthPick extends Configured implements Tool {
     
     job.setMapperClass(Map.class);
     job.setReducerClass(Reduce.class);
-i   job.setMapOutputKeyClass(Text.class);
+    job.setMapOutputKeyClass(Text.class);
     job.setMapOutputValueClass(FifthResultWritable.class);
     job.setInputFormatClass(TextInputFormat.class);
     job.setOutputFormatClass(TextOutputFormat.class);
