@@ -67,6 +67,7 @@ public class FifthPick extends Configured implements Tool {
     INVALID_MODE_GAMES, // Currently game_mode seems to always be 0, making this useless.
     ABANDONED_GAMES,
     COOP_BOT_GAMES,
+    OTHER_LOBBY_TYPE, // Other lobby types we don't care about.
     BOT_GAMES, // Game is 'real' but has bots.
     TOURNAMENT_GAMES,
   }
@@ -124,6 +125,9 @@ public class FifthPick extends Configured implements Tool {
         } else if (2 == lobby_type) {
           // Keep track of tournament games
           context.getCounter(FifthPickCounters.TOURNAMENT_GAMES).increment(1);
+        } else if (0 != lobby_type) {
+          context.getCounter(FifthPickCounters.OTHER_LOBBY_TYPE).increment(1);
+          return;
         }
         if (matchTree.get("radiant_win").getAsBoolean()) {
           radiantOutcome = 1;
@@ -158,7 +162,7 @@ public class FifthPick extends Configured implements Tool {
         // Sort the arrays .
         Arrays.sort(radiant_heroes);
         Arrays.sort(dire_heroes);
-        
+
         // Now go through the 5 slots and construct keys and outputs.
         for (int skip = 0; skip < 5; skip++) {
             StringBuilder radiant_key_builder = new StringBuilder();
@@ -169,7 +173,7 @@ public class FifthPick extends Configured implements Tool {
                 }
                 radiant_key_builder.append(Integer.toString(radiant_heroes[j]));
                 dire_key_builder.append(Integer.toString(dire_heroes[j]));
-                if (!((j == 5) || ((j == 4) && (skip == 5)))) {
+                if (!((j == 4) || ((j == 3) && (skip == 4)))) {
                     radiant_key_builder.append('.');
                     dire_key_builder.append('.');
                 }
