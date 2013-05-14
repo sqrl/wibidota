@@ -28,6 +28,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.Job;
@@ -106,7 +107,6 @@ public class FifthPick extends Configured implements Tool {
    * possible 4 man team and the result of the fifth.
    */
   public static class Map extends Mapper<LongWritable, Text, Text, FifthResultWritable> {
-
     private final static JsonParser PARSER = new JsonParser();
     public void map(LongWritable key, Text value, Context context)
         throws IOException, InterruptedException {
@@ -194,7 +194,7 @@ public class FifthPick extends Configured implements Tool {
    * A simple reducer that simply outputs the non-anonymous player accounts with their play count.
    */
   public static class Reduce
-      extends Reducer<Text, FifthResultWritable, Text, Text> {
+      extends Reducer<Text, FifthResultWritable, Text, NullWritable> {
     private final static Gson GSON = new GsonBuilder().create();
 
     public void reduce(Text key, Iterable<FifthResultWritable> values, Context context) 
@@ -214,11 +214,11 @@ public class FifthPick extends Configured implements Tool {
           victories.put(heroKey, victories.get(heroKey) + 1);
         }
       }
-      TreeMap<String, TreeMap<String, Integer>> OutputMap =
-          new TreeMap<String, TreeMap<String, Integer>>();
+      TreeMap<String, Object> OutputMap = new TreeMap<String, Object>();
       OutputMap.put("totals", totalGames);
       OutputMap.put("victories", victories);
-      context.write(key, new Text(GSON.toJson(OutputMap)));
+      OutputMap.put("team", key);
+      context.write(new Text(GSON.toJson(OutputMap)), NullWritable.get());
     }
   }
 
@@ -236,7 +236,7 @@ public class FifthPick extends Configured implements Tool {
     job.setMapperClass(Map.class);
     job.setReducerClass(Reduce.class);
     job.setMapOutputKeyClass(Text.class);
-    job.setMapOutputValueClass(FifthResultWritable.class);
+    job.setMapOutputValueClass(NullWritable.class);
     job.setInputFormatClass(TextInputFormat.class);
     job.setOutputFormatClass(TextOutputFormat.class);
 
